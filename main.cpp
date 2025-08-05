@@ -14,18 +14,17 @@ const unsigned int HEIGHT = 768;
 
 // Vehicle state
 struct VehicleState {
-
-	// speed of the vehicle in km/h set to 0.0f initially which 0 km/h 
+    // speed of the vehicle in km/h set to 0.0f initially which 0 km/h 
     float speed = 0.0f;
-	// RPM of the engine in revolutions per minute set to 800.0f initially which is idle RPM
+    // RPM of the engine in revolutions per minute set to 800.0f initially which is idle RPM
     float rpm = 800.0f; // Idle RPM
-	// Fuel level in percentage set to 85.0f initially which is 85% fuel level
+    // Fuel level in percentage set to 85.0f initially which is 85% fuel level
     float fuel = 85.0f;
-	// Engine temperature in degrees Celsius set to 90.0f initially which is normal operating temperature which is 90 degrees Celsius
+    // Engine temperature in degrees Celsius set to 90.0f initially which is normal operating temperature which is 90 degrees Celsius
     float engineTemp = 90.0f;
-	// oil pressure in PSI set to 45.0f initially which is normal oil pressure
+    // oil pressure in PSI set to 45.0f initially which is normal oil pressure
     float oilPressure = 45.0f;
-	// Battery voltage in volts set to 12.6f initially which is normal battery voltage
+    // Battery voltage in volts set to 12.6f initially which is normal battery voltage
     float batteryVoltage = 12.6f;
     bool engineRunning = false;
     bool acOn = false;
@@ -35,24 +34,24 @@ struct VehicleState {
     bool hazardsOn = false;
     bool parkingBrake = true;
     bool seatbelt = false;
-	// Doors status, false means closed, true means open
+    // Doors status, false means closed, true means open
     bool doors[4] = { false, false, false, false }; // FL, FR, RL, RR
     int gear = 0; // P=0, R=-1, N=0, D=1-8
     int displayMode = 0; // 0=Normal, 1=Sport, 2=Eco, 3=Comfort
-	// Odometer in kilometers set to 45672.8f initially which is 45672.8 km
+    // Odometer in kilometers set to 45672.8f initially which is 45672.8 km
     float odometer = 45672.8f;
-	// Trip A in kilometers set to 0.0f initially which is 0 km
+    // Trip A in kilometers set to 0.0f initially which is 0 km
     float tripA = 0.0f;
-	// Trip B in kilometers set to 158.3f initially which is 158.3 km
+    // Trip B in kilometers set to 158.3f initially which is 158.3 km
     float tripB = 158.3f;
-	// Average fuel consumption in liters per 100 km set to 7.2f initially which is 7.2 L/100km
+    // Average fuel consumption in liters per 100 km set to 7.2f initially which is 7.2 L/100km
     float avgFuelConsumption = 7.2f;
     float outsideTemp = 22.5f;
     int timeHour = 14;
     int timeMinute = 23;
     bool throttlePressed = false;
     float targetSpeed = 0.0f;
-	// Target revolutions per minute (RPM) for the engine, set to 800.0f initially which is idle RPM
+    // Target revolutions per minute (RPM) for the engine, set to 800.0f initially which is idle RPM
     float targetRPM = 800.0f;
 
     // Define min and max temps for the gauge
@@ -66,7 +65,7 @@ double lastTime = 0.0;
 // Blink timer for turn signals and hazards
 float blinkTimer = 0.0f;
 
-// Vertex shader with text rendering support
+// Enhanced vertex shader with better lighting support
 const char* vertexShaderSrc = R"(
 #version 330 core
 layout(location = 0) in vec2 aPos;
@@ -94,7 +93,7 @@ void main()
 }
 )";
 
-// Fragment shader
+// Enhanced fragment shader with better color support
 const char* fragmentShaderSrc = R"(
 #version 330 core
 out vec4 FragColor;
@@ -109,7 +108,7 @@ void main()
 )";
 
 void processInput(GLFWwindow* window, float deltaTime) {
-	// Check if the ESC key was pressed to close the window
+    // Check if the ESC key was pressed to close the window
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
@@ -117,15 +116,15 @@ void processInput(GLFWwindow* window, float deltaTime) {
     bool currentThrottle = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
     vehicle.throttlePressed = currentThrottle;
 
-	// Update vehicle speed and RPM based on throttle input
+    // Update vehicle speed and RPM based on throttle input
     if (currentThrottle && vehicle.engineRunning) {
-        // Increase the speed by 50 * deltaTime, but don’t go past 250 (speed cap).
+        // Increase the speed by 50 * deltaTime, but don't go past 250 (speed cap).
         vehicle.targetSpeed = std::min(vehicle.targetSpeed + 50.0f * deltaTime, 250.0f);
-		// Increase the RPM by 2000 * deltaTime, but don’t go past 7000 (RPM cap).
+        // Increase the RPM by 2000 * deltaTime, but don't go past 7000 (RPM cap).
         vehicle.targetRPM = std::min(vehicle.targetRPM + 2000.0f * deltaTime, 7000.0f);
     }
     else {
-		// If throttle is not pressed, decrease speed and RPM
+        // If throttle is not pressed, decrease speed and RPM
         vehicle.targetSpeed = std::max(vehicle.targetSpeed - 30.0f * deltaTime, 0.0f);
         if (vehicle.engineRunning) {
             vehicle.targetRPM = std::max(vehicle.targetRPM - 1500.0f * deltaTime, 800.0f);
@@ -136,7 +135,7 @@ void processInput(GLFWwindow* window, float deltaTime) {
     }
 
     // Smooth transitions
-	vehicle.speed += (vehicle.targetSpeed - vehicle.speed) * 5.0f * deltaTime; // debugging it later try to increase 5.0f to 5000.0f
+    vehicle.speed += (vehicle.targetSpeed - vehicle.speed) * 5.0f * deltaTime;
     vehicle.rpm += (vehicle.targetRPM - vehicle.rpm) * 3.0f * deltaTime;
 
     // Mode switching
@@ -242,26 +241,17 @@ void drawRectangle(const Shader& shader, float x, float y, float width, float he
         x, y + height
     };
 
-    GLuint VAO, VBO;                   // Declare variables to hold the IDs for Vertex Array Object and Vertex Buffer Object
-    glGenVertexArrays(1, &VAO);       // Generate 1 VAO and store its ID in VAO
-    glGenBuffers(1, &VBO);            // Generate 1 VBO and store its ID in VBO
+    GLuint VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
 
-    glBindVertexArray(VAO);           // Bind the VAO so we can configure it
-    glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind the VBO as the current array buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // Upload the vertex data to the GPU
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // Define vertex attribute pointer:
-    // location 0 (matches shader layout location)
-    // 2 floats per vertex (x, y)
-    // not normalized
-    // stride is 2 floats (size of each vertex in bytes)
-    // offset 0 (start of the vertex data)
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 
-    glEnableVertexAttribArray(0);    // Enable the vertex attribute at location 0
-
-    // Activate the shader program and set uniform variables for rotation, 
-    // position offset, scale, color, and transparency before drawing the shape
     shader.use();
     shader.setFloat("rotation", 0.0f);
     shader.setVec2("offset", 0.0f, 0.0f);
@@ -269,19 +259,13 @@ void drawRectangle(const Shader& shader, float x, float y, float width, float he
     shader.setVec3("color", r, g, b);
     shader.setFloat("alpha", a);
 
-	// Bind the VAO to use the vertex data
     glBindVertexArray(VAO);
-
-	// Draw the rectangle using GL_TRIANGLE_FAN
-	// This draws the rectangle as a fan of triangles, starting from the first vertex
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-	// Unbind the VAO to prevent accidental modification
     glDeleteVertexArrays(1, &VAO);
-
-	// Unbind the VBO to prevent accidental modification
     glDeleteBuffers(1, &VBO);
 }
+
 // Draws a warning light with blinking effect
 void drawWarningLight(const Shader& shader, float x, float y, float size, bool active, float r, float g, float b) {
     if (active) {
@@ -295,41 +279,53 @@ void drawWarningLight(const Shader& shader, float x, float y, float size, bool a
 
 // Draws the digital display with mode indicator, gear, time, and temperature
 void drawDigitalDisplay(const Shader& shader) {
-    // Main display background
-    // draw a big gray rectangle at the top center
-    drawRectangle(shader, -200, 150, 400, 100, 0.1f, 0.1f, 0.1f);
+    // Main display background with modern dark styling
+    drawRectangle(shader, -200, 150, 400, 100, 0.05f, 0.05f, 0.1f);
 
-    // Mode indicator
+    // Mode indicator with improved styling
     const char* modes[] = { "COMFORT", "SPORT", "ECO", "INDIVIDUAL" };
-    float modeColors[][3] = { {0.0f, 0.8f, 1.0f}, {1.0f, 0.3f, 0.0f}, {0.0f, 1.0f, 0.3f}, {0.8f, 0.0f, 1.0f} };
+    float modeColors[][3] = { 
+        {0.0f, 0.6f, 1.0f},   // Comfort - Blue
+        {1.0f, 0.2f, 0.0f},   // Sport - Red
+        {0.0f, 1.0f, 0.2f},   // Eco - Green
+        {0.8f, 0.0f, 1.0f}    // Individual - Purple
+    };
 
-    drawRectangle(  shader, -180, 180, 80, 30, 
-                    modeColors[vehicle.displayMode][0],
-                    modeColors[vehicle.displayMode][1],
-                    modeColors[vehicle.displayMode][2]);
+    // Mode background
+    drawRectangle(shader, -180, 180, 80, 30, 0.1f, 0.1f, 0.15f);
+    // Mode color indicator
+    drawRectangle(shader, -175, 185, 70, 20, 
+                  modeColors[vehicle.displayMode][0],
+                  modeColors[vehicle.displayMode][1],
+                  modeColors[vehicle.displayMode][2]);
 
-    // Gear indicator
-    // draw a small light gray rectangle at the top center
-    drawRectangle(shader, -50, 180, 60, 40, 0.2f, 0.2f, 0.2f);
+    // Gear indicator with enhanced styling
+    drawRectangle(shader, -50, 180, 60, 40, 0.1f, 0.1f, 0.15f);
     if (vehicle.gear == 0) {
-        drawRectangle(shader, -40, 190, 40, 20, 0.0f, 1.0f, 0.0f); // P
+        drawRectangle(shader, -40, 190, 40, 20, 0.0f, 1.0f, 0.0f); // P - Green
     }
     else if (vehicle.gear == -1) {
-        drawRectangle(shader, -40, 190, 40, 20, 1.0f, 1.0f, 0.0f); // R
+        drawRectangle(shader, -40, 190, 40, 20, 1.0f, 0.5f, 0.0f); // R - Orange
     }
     else if (vehicle.gear > 0) {
-        drawRectangle(shader, -40, 190, 40, 20, 0.0f, 0.8f, 1.0f); // D
+        drawRectangle(shader, -40, 190, 40, 20, 0.0f, 0.8f, 1.0f); // D - Blue
     }
 
-    // Time display
-    // draw a small light blue rectangle at the top right corner
-    drawRectangle(shader, 80, 180, 100, 30, 0.0f, 0.5f, 1.0f);
+    // Time display with blue accent
+    drawRectangle(shader, 80, 180, 100, 30, 0.1f, 0.1f, 0.15f);
+    drawRectangle(shader, 85, 185, 90, 20, 0.0f, 0.4f, 0.8f);
 
-    // Temperature and other info
-	// draw a small light yellow rectangle
-    drawRectangle(shader, -150, 120, 60, 20, vehicle.outsideTemp < 5 ? 0.0f : 0.8f,
-        vehicle.outsideTemp < 5 ? 0.8f : 1.0f,
-        vehicle.outsideTemp < 5 ? 1.0f : 0.0f);
+    // Temperature and other info with conditional coloring
+    drawRectangle(shader, -150, 120, 60, 20, 
+                  vehicle.outsideTemp < 5 ? 0.0f : 0.6f,
+                  vehicle.outsideTemp < 5 ? 0.6f : 0.8f,
+                  vehicle.outsideTemp < 5 ? 1.0f : 0.0f);
+
+    // Speed display (digital)
+    drawRectangle(shader, -50, 50, 100, 50, 0.0f, 0.0f, 0.0f, 0.8f);
+    
+    // Central info display
+    drawRectangle(shader, -100, -20, 200, 60, 0.02f, 0.02f, 0.05f);
 }
 
 void drawWarningPanel(const Shader& shader) {
@@ -413,16 +409,16 @@ int main() {
 
     Shader shader(vertexShaderSrc, fragmentShaderSrc);
 
-    // Create gauges with different positions and sizes
-    Gauge speedometer(-250.0f, -50.0f, 120.0f);
-    Gauge tachometer(250.0f, -50.0f, 120.0f);
-    Gauge fuelGauge(-400.0f, 50.0f, 60.0f);
-    Gauge tempGauge(400.0f, 50.0f, 60.0f);
+    // Create gauges with enhanced styling
+    Gauge speedometer(-250.0f, -50.0f, 120.0f, GaugeType::FULL_CIRCLE);
+    Gauge tachometer(250.0f, -50.0f, 120.0f, GaugeType::FULL_CIRCLE);
+    Gauge fuelGauge(400.0f, -20.0f, 60.0f, GaugeType::QUADRANT_1);
+    Gauge tempGauge(400.0f, -80.0f, 60.0f, GaugeType::QUADRANT_4);
 
     glLineWidth(3.0f);
     lastTime = glfwGetTime();
 
-    std::cout << "Mercedes-Benz Instrument Cluster Controls:\n";
+    std::cout << "Enhanced Mercedes-Benz Instrument Cluster Controls:\n";
     std::cout << "SPACE - Throttle\n";
     std::cout << "Q/E - Switch display modes\n";
     std::cout << "I - Engine start/stop\n";
@@ -441,34 +437,33 @@ int main() {
 
         processInput(window, deltaTime);
 
-        // Background color based on mode
-        float bgColors[][3] = { {0.02f, 0.02f, 0.05f}, {0.05f, 0.02f, 0.02f}, {0.02f, 0.05f, 0.02f}, {0.05f, 0.02f, 0.05f} };
-        glClearColor(bgColors[vehicle.displayMode][0], bgColors[vehicle.displayMode][1], bgColors[vehicle.displayMode][2], 1.0f);
+        // Enhanced background colors based on mode
+        float bgColors[][3] = { 
+            {0.01f, 0.01f, 0.03f},   // Comfort - Dark blue
+            {0.03f, 0.01f, 0.01f},   // Sport - Dark red
+            {0.01f, 0.03f, 0.01f},   // Eco - Dark green
+            {0.03f, 0.01f, 0.03f}    // Individual - Dark purple
+        };
+        glClearColor(bgColors[vehicle.displayMode][0], 
+                     bgColors[vehicle.displayMode][1], 
+                     bgColors[vehicle.displayMode][2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Calculate gauge angles
-        float speedAngle = (-135.0f - (vehicle.speed / 250.0f) * 270.0f) * M_PI / 180.0f;
-        float rpmAngle = (-135.0f - (vehicle.rpm / 8000.0f) * 270.0f) * M_PI / 180.0f;
-        //float fuelAngle = (-135.0f + (vehicle.fuel / 100.0f) * 270.0f) * M_PI / 180.0f;
-        float fuelAngle = ((vehicle.fuel / 100.0f) * 90.0f) * M_PI / 180.0f;
-        //float tempAngle = (135.0f - ((vehicle.engineTemp - 60.0f) / 80.0f) * -270.0f) * M_PI / 180.0f;
-
-        // Clamp the temperature so it's within the gauge range
+        // Calculate gauge angles using the new system
+        float speedAngle = speedometer.getAngleForValue(vehicle.speed / 250.0f);
+        float rpmAngle = tachometer.getAngleForValue(vehicle.rpm / 8000.0f);
+        float fuelAngle = fuelGauge.getAngleForValue(vehicle.fuel / 100.0f);
+        
+        // Temperature mapping: clamp and normalize
         float clampedTemp = std::max(vehicle.minTemp, std::min(vehicle.engineTemp, vehicle.maxTemp));
+        float tempNormalized = (clampedTemp - vehicle.minTemp) / (vehicle.maxTemp - vehicle.minTemp);
+        float tempAngle = tempGauge.getAngleForValue(tempNormalized);
 
-        // Map temperature linearly from [minTemp, maxTemp] to [270°, 0°]
-        //float tempAngleDeg = 270.0f - ((clampedTemp - vehicle.minTemp) / (vehicle.maxTemp - vehicle.minTemp)) * 270.0f;
-        float tempAngleDeg = 270.0f + ((clampedTemp - vehicle.minTemp) / (vehicle.maxTemp - vehicle.minTemp)) * 90.0f;
-
-        // Convert degrees to radians for your gauge rendering
-        float tempAngleRad = tempAngleDeg * M_PI / 180.0f;
-
-
-        // Draw main gauges
-        speedometer.draw(shader, speedAngle);
-        tachometer.draw(shader, rpmAngle);
-        fuelGauge.draw(shader, fuelAngle);
-        tempGauge.draw(shader, tempAngleRad);
+        // Draw main gauges with enhanced styling
+        speedometer.draw(shader, speedAngle, true);
+        tachometer.draw(shader, rpmAngle, true);
+        fuelGauge.draw(shader, fuelAngle, false);
+        tempGauge.draw(shader, tempAngle, false);
 
         // Draw digital displays and warning lights
         drawDigitalDisplay(shader);
