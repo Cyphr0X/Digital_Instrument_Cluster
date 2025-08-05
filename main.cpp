@@ -1,4 +1,4 @@
-#include <glad/glad.h>
+﻿#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <string>
@@ -54,6 +54,10 @@ struct VehicleState {
     float targetSpeed = 0.0f;
 	// Target revolutions per minute (RPM) for the engine, set to 800.0f initially which is idle RPM
     float targetRPM = 800.0f;
+
+    // Define min and max temps for the gauge
+    float minTemp = -30.0f;
+    float maxTemp = 170.0f;
 };
 
 VehicleState vehicle;
@@ -113,11 +117,15 @@ void processInput(GLFWwindow* window, float deltaTime) {
     bool currentThrottle = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
     vehicle.throttlePressed = currentThrottle;
 
+	// Update vehicle speed and RPM based on throttle input
     if (currentThrottle && vehicle.engineRunning) {
+        // Increase the speed by 50 * deltaTime, but don’t go past 250 (speed cap).
         vehicle.targetSpeed = std::min(vehicle.targetSpeed + 50.0f * deltaTime, 250.0f);
+		// Increase the RPM by 2000 * deltaTime, but don’t go past 7000 (RPM cap).
         vehicle.targetRPM = std::min(vehicle.targetRPM + 2000.0f * deltaTime, 7000.0f);
     }
     else {
+		// If throttle is not pressed, decrease speed and RPM
         vehicle.targetSpeed = std::max(vehicle.targetSpeed - 30.0f * deltaTime, 0.0f);
         if (vehicle.engineRunning) {
             vehicle.targetRPM = std::max(vehicle.targetRPM - 1500.0f * deltaTime, 800.0f);
@@ -128,7 +136,7 @@ void processInput(GLFWwindow* window, float deltaTime) {
     }
 
     // Smooth transitions
-    vehicle.speed += (vehicle.targetSpeed - vehicle.speed) * 5.0f * deltaTime;
+	vehicle.speed += (vehicle.targetSpeed - vehicle.speed) * 5.0f * deltaTime; // debugging it later try to increase 5.0f to 5000.0f
     vehicle.rpm += (vehicle.targetRPM - vehicle.rpm) * 3.0f * deltaTime;
 
     // Mode switching
@@ -234,16 +242,26 @@ void drawRectangle(const Shader& shader, float x, float y, float width, float he
         x, y + height
     };
 
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    GLuint VAO, VBO;                   // Declare variables to hold the IDs for Vertex Array Object and Vertex Buffer Object
+    glGenVertexArrays(1, &VAO);       // Generate 1 VAO and store its ID in VAO
+    glGenBuffers(1, &VBO);            // Generate 1 VBO and store its ID in VBO
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindVertexArray(VAO);           // Bind the VAO so we can configure it
+    glBindBuffer(GL_ARRAY_BUFFER, VBO); // Bind the VBO as the current array buffer
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // Upload the vertex data to the GPU
+
+    // Define vertex attribute pointer:
+    // location 0 (matches shader layout location)
+    // 2 floats per vertex (x, y)
+    // not normalized
+    // stride is 2 floats (size of each vertex in bytes)
+    // offset 0 (start of the vertex data)
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
 
+    glEnableVertexAttribArray(0);    // Enable the vertex attribute at location 0
+
+    // Activate the shader program and set uniform variables for rotation, 
+    // position offset, scale, color, and transparency before drawing the shape
     shader.use();
     shader.setFloat("rotation", 0.0f);
     shader.setVec2("offset", 0.0f, 0.0f);
@@ -251,13 +269,20 @@ void drawRectangle(const Shader& shader, float x, float y, float width, float he
     shader.setVec3("color", r, g, b);
     shader.setFloat("alpha", a);
 
+	// Bind the VAO to use the vertex data
     glBindVertexArray(VAO);
+
+	// Draw the rectangle using GL_TRIANGLE_FAN
+	// This draws the rectangle as a fan of triangles, starting from the first vertex
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
+	// Unbind the VAO to prevent accidental modification
     glDeleteVertexArrays(1, &VAO);
+
+	// Unbind the VBO to prevent accidental modification
     glDeleteBuffers(1, &VBO);
 }
-
+// Draws a warning light with blinking effect
 void drawWarningLight(const Shader& shader, float x, float y, float size, bool active, float r, float g, float b) {
     if (active) {
         float alpha = (blinkTimer < 0.5f) ? 1.0f : 0.3f;
@@ -268,18 +293,23 @@ void drawWarningLight(const Shader& shader, float x, float y, float size, bool a
     }
 }
 
+// Draws the digital display with mode indicator, gear, time, and temperature
 void drawDigitalDisplay(const Shader& shader) {
     // Main display background
+    // draw a big gray rectangle at the top center
     drawRectangle(shader, -200, 150, 400, 100, 0.1f, 0.1f, 0.1f);
 
     // Mode indicator
     const char* modes[] = { "COMFORT", "SPORT", "ECO", "INDIVIDUAL" };
     float modeColors[][3] = { {0.0f, 0.8f, 1.0f}, {1.0f, 0.3f, 0.0f}, {0.0f, 1.0f, 0.3f}, {0.8f, 0.0f, 1.0f} };
 
-    drawRectangle(shader, -180, 180, 80, 30, modeColors[vehicle.displayMode][0],
-        modeColors[vehicle.displayMode][1], modeColors[vehicle.displayMode][2]);
+    drawRectangle(  shader, -180, 180, 80, 30, 
+                    modeColors[vehicle.displayMode][0],
+                    modeColors[vehicle.displayMode][1],
+                    modeColors[vehicle.displayMode][2]);
 
     // Gear indicator
+    // draw a small light gray rectangle at the top center
     drawRectangle(shader, -50, 180, 60, 40, 0.2f, 0.2f, 0.2f);
     if (vehicle.gear == 0) {
         drawRectangle(shader, -40, 190, 40, 20, 0.0f, 1.0f, 0.0f); // P
@@ -292,18 +322,20 @@ void drawDigitalDisplay(const Shader& shader) {
     }
 
     // Time display
+    // draw a small light blue rectangle at the top right corner
     drawRectangle(shader, 80, 180, 100, 30, 0.0f, 0.5f, 1.0f);
 
     // Temperature and other info
+	// draw a small light yellow rectangle
     drawRectangle(shader, -150, 120, 60, 20, vehicle.outsideTemp < 5 ? 0.0f : 0.8f,
         vehicle.outsideTemp < 5 ? 0.8f : 1.0f,
         vehicle.outsideTemp < 5 ? 1.0f : 0.0f);
 }
 
 void drawWarningPanel(const Shader& shader) {
-    float y = -150;
+    float y = -250;
     float size = 25;
-    float spacing = 35;
+    float spacing = 70;
     float x = -400;
 
     // Engine warning
@@ -415,16 +447,28 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Calculate gauge angles
-        float speedAngle = (-135.0f + (vehicle.speed / 250.0f) * 270.0f) * M_PI / 180.0f;
-        float rpmAngle = (-135.0f + (vehicle.rpm / 8000.0f) * 270.0f) * M_PI / 180.0f;
-        float fuelAngle = (-135.0f + (vehicle.fuel / 100.0f) * 270.0f) * M_PI / 180.0f;
-        float tempAngle = (-135.0f + ((vehicle.engineTemp - 60.0f) / 80.0f) * 270.0f) * M_PI / 180.0f;
+        float speedAngle = (-135.0f - (vehicle.speed / 250.0f) * 270.0f) * M_PI / 180.0f;
+        float rpmAngle = (-135.0f - (vehicle.rpm / 8000.0f) * 270.0f) * M_PI / 180.0f;
+        //float fuelAngle = (-135.0f + (vehicle.fuel / 100.0f) * 270.0f) * M_PI / 180.0f;
+        float fuelAngle = ((vehicle.fuel / 100.0f) * 90.0f) * M_PI / 180.0f;
+        //float tempAngle = (135.0f - ((vehicle.engineTemp - 60.0f) / 80.0f) * -270.0f) * M_PI / 180.0f;
+
+        // Clamp the temperature so it's within the gauge range
+        float clampedTemp = std::max(vehicle.minTemp, std::min(vehicle.engineTemp, vehicle.maxTemp));
+
+        // Map temperature linearly from [minTemp, maxTemp] to [270°, 0°]
+        //float tempAngleDeg = 270.0f - ((clampedTemp - vehicle.minTemp) / (vehicle.maxTemp - vehicle.minTemp)) * 270.0f;
+        float tempAngleDeg = 270.0f + ((clampedTemp - vehicle.minTemp) / (vehicle.maxTemp - vehicle.minTemp)) * 90.0f;
+
+        // Convert degrees to radians for your gauge rendering
+        float tempAngleRad = tempAngleDeg * M_PI / 180.0f;
+
 
         // Draw main gauges
         speedometer.draw(shader, speedAngle);
         tachometer.draw(shader, rpmAngle);
         fuelGauge.draw(shader, fuelAngle);
-        tempGauge.draw(shader, tempAngle);
+        tempGauge.draw(shader, tempAngleRad);
 
         // Draw digital displays and warning lights
         drawDigitalDisplay(shader);

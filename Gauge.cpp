@@ -68,13 +68,16 @@ void Gauge::setupNeedle() {
 
 void Gauge::setupTicks() {
     std::vector<float> tickVertices;
-    const int majorTicks = 9;  // From -135° to +135° (270° total)
-    const int minorTicks = 27; // 3 minor ticks between each major tick
+    const int majorTicks = 10;   // Number of major ticks
+    const int minorTicks = 30;   // Total minor tick steps
+    const float startAngle = -135.0f;  // Start of sweep
+    const float endAngle = 135.0f;     // End of sweep
+    const float sweep = endAngle - startAngle;
 
-    // Major tick marks
+    // ---- Major tick marks ----
     for (int i = 0; i <= majorTicks; i++) {
-        float angle = -135.0f + (270.0f * i / majorTicks);
-        angle = angle * M_PI / 180.0f;
+        float angleDeg = startAngle - (sweep * i / majorTicks);
+        float angle = angleDeg * M_PI / 180.0f;
 
         float innerRadius = radius * 0.85f;
         float outerRadius = radius * 0.95f;
@@ -82,29 +85,28 @@ void Gauge::setupTicks() {
         float cosA = cos(angle);
         float sinA = sin(angle);
 
-        // Tick line
         tickVertices.push_back(innerRadius * cosA);
         tickVertices.push_back(innerRadius * sinA);
         tickVertices.push_back(outerRadius * cosA);
         tickVertices.push_back(outerRadius * sinA);
     }
 
-    // Minor tick marks
-    for (int i = 0; i < minorTicks; i++) {
-        float angle = -135.0f + (270.0f * i / (minorTicks - 1));
-        angle = angle * M_PI / 180.0f;
+    // ---- Minor tick marks ----
+    for (int i = 0; i <= minorTicks; i++) {
+        float angleDeg = startAngle - (sweep * i / minorTicks);
 
-        // Skip major tick positions
+        // Skip if it's a major tick position
         bool isMajorTick = false;
         for (int j = 0; j <= majorTicks; j++) {
-            float majorAngle = -135.0f + (270.0f * j / majorTicks);
-            if (abs(angle * 180.0f / M_PI - majorAngle) < 1.0f) {
+            float majorAngle = startAngle + (sweep * j / majorTicks);
+            if (fabs(angleDeg - majorAngle) < 0.5f) {  // tolerance
                 isMajorTick = true;
                 break;
             }
         }
 
         if (!isMajorTick) {
+            float angle = angleDeg * M_PI / 180.0f;
             float innerRadius = radius * 0.88f;
             float outerRadius = radius * 0.93f;
 
@@ -118,6 +120,7 @@ void Gauge::setupTicks() {
         }
     }
 
+    // ---- Send to OpenGL ----
     glGenVertexArrays(1, &ticksVAO);
     glGenBuffers(1, &ticksVBO);
 
@@ -129,6 +132,7 @@ void Gauge::setupTicks() {
 
     tickCount = tickVertices.size() / 2;
 }
+
 
 void Gauge::draw(const Shader& shader, float needleRotationRadians) {
     shader.use();
